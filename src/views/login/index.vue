@@ -26,14 +26,13 @@
   </div>
 </template>
 <script>
-import { parseTime } from '@/utils/index'
 export default {
   name: 'Login',
   data() {
     return {
       ruleForm: {
-        password: 'itHeiMa@' + parseTime(Date.now(), '{y}{m}{d}'),
-        mobile: '13800000002',
+        password: '1234567',
+        mobile: '13800000003',
         isChecked: false
       },
       rules: {

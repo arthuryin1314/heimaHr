@@ -1,6 +1,7 @@
 import axios from 'axios'
 import store from '@/store/index'
 import { Message } from 'element-ui'
+import router from '@/router/index'
 const request = axios.create({
   baseURL: process.env.VUE_APP_BASE_API,
   timeout: 1000,
@@ -33,9 +34,18 @@ request.interceptors.response.use(function(response) {
     return Promise.reject(new Error(message))
   }
   // console.log(response)
-}, function(error) {
+}, async function(error) {
   // 超出 2xx 范围的状态码都会触发该函数。
   // 对响应错误做点什么
+  if (error.response.status === 401) {
+    Message({
+      type: 'warning',
+      message: '登录已过期，请重新登录'
+    })
+    await store.dispatch('user/logout')
+    router.push('/login')
+    return Promise.reject(error)
+  }
   Message({
     type: 'error',
     message: error.message
