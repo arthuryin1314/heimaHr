@@ -3,7 +3,8 @@ import store from '@/store/index'
 import { Message } from 'element-ui'
 const request = axios.create({
   baseURL: process.env.VUE_APP_BASE_API,
-  timeout: 1000
+  timeout: 1000,
+  headers: { 'Content-Type': 'application/json' }
 })
 // 添加请求拦截器
 request.interceptors.request.use(function(config) {
