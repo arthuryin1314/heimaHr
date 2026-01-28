@@ -6,15 +6,13 @@
 
 <script>
 import { mapGetters } from 'vuex'
+
 export default {
   name: 'Dashboard',
   computed: {
     ...mapGetters([
       'name'
     ])
-  },
-  created() {
-    this.$store.dispatch('user/getUserInfo')
   }
 }
 </script>
