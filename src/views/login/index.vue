@@ -33,7 +33,7 @@ export default {
     return {
       loginForm: {
         mobile: process.env.NODE_ENV === 'development' ? '13800000003' : '',
-        password: process.env.NODE_ENV === 'development' ? '1234567' : '',
+        password: process.env.NODE_ENV === 'development' ? `itHeiMa@${new Date().toISOString().slice(0, 10).replace(/-/g, '')}` : '',
         isAgree: process.env.NODE_ENV === 'development'
       },
       loginRules: {
