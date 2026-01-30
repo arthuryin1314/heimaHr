@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="添加子部门" :visible.sync="dialogFormVisible" @close="close">
+  <el-dialog :title="dialogTitle" :visible.sync="dialogFormVisible" @close="close">
     <el-form ref="addDeptForm" :model="form" :rules="rules">
       <el-form-item label="部门名称" :label-width="formLabelWidth" prop="name">
         <el-input v-model="form.name" autocomplete="off" />
@@ -17,14 +17,14 @@
       </el-form-item>
     </el-form>
     <div slot="footer" class="dialog-footer">
-      <el-button type="primary" @click="add">确 定</el-button>
+      <el-button type="primary" @click="state.isAdd ? add() : edit()">确 定</el-button>
       <el-button @click="close">取 消</el-button>
     </div>
   </el-dialog>
 </template>
 
 <script>
-import { getDepartmentList, getManagetList, addNewDepartment } from '@/api/department'
+import { getDepartmentList, getManagetList, addNewDepartment, getDepartmentDetail, updateDepartment } from '@/api/department'
 export default {
   props: {
     dialogFormVisible: {
@@ -34,19 +34,28 @@ export default {
     currentId: {
       type: Number,
       default: null
+    },
+    state: {
+      type: Object,
+      required: true
     }
   },
   data() {
+    const defaultForm = {
+      name: '',
+      code: '',
+      managerId: '',
+      managerName: '',
+      introduce: '',
+      pid: '',
+      createTime: '',
+      id: ''
+    }
     return {
       managerList: [],
       value: '',
-      form: {
-        name: '',
-        code: '',
-        managerId: '',
-        introduce: '',
-        pid: ''
-      },
+      defaultForm,
+      form: { ...defaultForm },
       formLabelWidth: '80px',
       rules: {
         name: [
@@ -58,7 +67,10 @@ export default {
           {
             trigger: 'blur',
             validator: async(rule, value, callback) => {
-              const result = await getDepartmentList()
+              let result = await getDepartmentList()
+              if (this.state.isEdit) {
+                result = result.filter(item => item.id !== this.currentId)
+              }
               if (result.some(item => item.name === value)) {
                 callback(new Error('部门名称已存在'))
               } else {
@@ -81,7 +93,7 @@ export default {
           {
             required: true,
             message: '请输入负责人姓名',
-            trigger: 'blur'
+            trigger: 'change'
           }
         ],
         introduce: [
@@ -97,6 +109,16 @@ export default {
       }
     }
   },
+  computed: {
+    dialogTitle() {
+      if (this.state.isAdd) {
+        return '添加子部门'
+      } else if (this.state.isEdit) {
+        return '编辑部门'
+      }
+      return ''
+    }
+  },
   created() {
     this.getMangerList()
   },
@@ -104,8 +126,23 @@ export default {
     add() {
       this.$refs.addDeptForm.validate(async isOk => {
         if (isOk) {
-          await addNewDepartment({ ...this.form, pid: this.currentId })
+          const payload = { ...this.form, pid: this.currentId }
+          delete payload.id
+          delete payload.createTime
+          await addNewDepartment(payload)
           this.$message.success('添加成功')
+          this.$emit('update')
+          this.close()
+        }
+      })
+    },
+    edit() {
+      this.$refs.addDeptForm.validate(async isOk => {
+        if (isOk) {
+          const res = await updateDepartment(this.form)
+          console.log(res)
+
+          this.$message.success('编辑成功')
           this.$emit('update')
           this.close()
         }
@@ -113,10 +150,16 @@ export default {
     },
     close() {
       this.$refs.addDeptForm.resetFields()
+      this.form = { ...this.defaultForm }
       this.$emit('update:dialogFormVisible', false)
     },
     async getMangerList() {
       this.managerList = await getManagetList()
+    },
+    async getDepartmentDetail() {
+      const detail = await getDepartmentDetail(this.currentId)
+      console.log(detail)
+      this.form = { ...this.defaultForm, ...detail }
     }
   }
 }

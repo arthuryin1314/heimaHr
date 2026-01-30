@@ -29,11 +29,11 @@
         </span>
       </el-tree>
     </div>
-    <DialogForm :dialog-form-visible.sync="dialogFormVisible" :current-id="currentId" @update="getDepartmentData" />
+    <DialogForm ref="diaForm" :dialog-form-visible.sync="dialogFormVisible" :current-id="currentId" :state="state" @update="getDepartmentData" />
   </div>
 </template>
 <script>
-import { getDepartmentList } from '@/api/department'
+import { getDepartmentList, deleteDepartment } from '@/api/department'
 import { transListToTreeData } from '@/utils/index.js'
 import DialogForm from './component/dialog.vue'
 export default {
@@ -48,7 +48,13 @@ export default {
         label: 'name',
         children: 'children'
       },
-      dialogFormVisible: false
+      dialogFormVisible: false,
+      currentId: null,
+      state: {
+        isAdd: false,
+        isEdit: false
+      }
+
     }
   },
   created() {
@@ -61,11 +67,33 @@ export default {
       this.data = transListToTreeData(res, 0)
       console.log(this.data)
     },
-    handleCommand(command, id) {
+    async handleCommand(command, id) {
       if (command === 'add') {
         this.dialogFormVisible = true
+        this.state.isAdd = true
+        this.state.isEdit = false
         this.currentId = id
         // console.log(command, id)
+      } else if (command === 'edit') {
+        this.dialogFormVisible = true
+        this.state.isEdit = true
+        this.state.isAdd = false
+        this.currentId = id
+        this.$nextTick(() => {
+          this.$refs.diaForm.getDepartmentDetail()
+        })
+      } else {
+        await this.$confirm('此操作将永久删除该部门, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        await deleteDepartment(id)
+        this.getDepartmentData()
+        this.$message({
+          type: 'success',
+          message: '删除成功!'
+        })
       }
     }
   }
