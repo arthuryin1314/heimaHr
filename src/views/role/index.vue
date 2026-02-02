@@ -8,25 +8,57 @@
       <el-table :data="tableData" style="width: 100%" fit>
         <el-table-column label="角色" min-width="200" header-align="center" align="center" show-overflow-tooltip>
           <template slot-scope="scope">
-            <i class="el-icon-user-solid" />
-            <span style="margin-left: 10px">{{ scope.row.name }}</span>
-          </template>
-        </el-table-column>
+            <!-- 修复1：绑定输入框值 + 包裹所有非编辑状态的元素 -->
+            <template v-if="scope.row.isEdit">
+              <el-input v-model="scope.row.rowEdit.name" placeholder="请输入角色名称" />
+            </template>
+            <template v-else>
+              <i class="el-icon-user-solid" />
+              <span style="margin-left: 10px">{{ scope.row.name }}</span>
+            </template>
+          </template></el-table-column>
         <el-table-column label="启用" min-width="140" header-align="center" align="center">
           <template slot-scope="scope">
-            <span style="margin-left: 10px">{{ scope.row.state === 1 ? '已启用' : '已禁用' }}</span>
+            <el-switch
+              v-if="scope.row.isEdit"
+              v-model="scope.row.rowEdit.state"
+              :active-value="1"
+              :inactive-value="0"
+              active-color="#13ce66"
+              inactive-color="#ff4949"
+            />
+            <span v-else style="margin-left: 10px">{{ scope.row.state === 1 ? '已启用' : '已禁用' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="描述" min-width="260" header-align="center" align="center" show-overflow-tooltip>
           <template slot-scope="scope">
-            <span style="margin-left: 10px">{{ scope.row.description }}</span>
+            <el-input
+              v-if="scope.row.isEdit"
+              v-model="scope.row.rowEdit.description"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入内容"
+            />
+            <span v-else style="margin-left: 10px">{{ scope.row.description }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" min-width="240" header-align="center" align="center">
-          <template>
-            <el-button size="mini" type="primary">分配权限</el-button>
-            <el-button size="mini" type="info">编辑</el-button>
-            <el-button size="mini" type="danger">删除</el-button>
+          <template slot-scope="scope">
+            <template v-if="scope.row.isEdit">
+              <el-button type="primary" @click="btnEditOk(scope.row)">保存</el-button>
+              <el-button type="danger" @click="scope.row.isEdit=false">取消</el-button>
+            </template>
+            <template v-else>
+              <el-button size="mini" type="primary">分配权限</el-button>
+              <el-button size="mini" type="info" class="btn-edit-gap" @click="btnEdit(scope.row)">编辑</el-button>
+              <el-popconfirm
+                title="这是一段内容确定删除吗？"
+                @onConfirm="del(scope.row.id)"
+              >
+                <el-button slot="reference" size="mini" type="danger">删除</el-button>
+              </el-popconfirm>
+            </template>
+
           </template>
         </el-table-column>
       </el-table>
@@ -47,19 +79,15 @@
           </el-form-item>
           <el-form-item label="启用" class="switch-row">
             <el-switch
-              v-model="isState"
+              v-model="addForm.state"
+              :active-value="1"
+              :inactive-value="0"
               active-color="#13ce66"
               inactive-color="#ff4949"
-              @change="switchChange"
             />
           </el-form-item>
           <el-form-item label="角色描述" prop="description">
-            <el-input
-              v-model="addForm.description"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入内容"
-            />
+            <el-input v-model="addForm.description" type="textarea" :rows="3" placeholder="请输入内容" />
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer role-dialog-footer">
@@ -71,7 +99,7 @@
   </div>
 </template>
 <script>
-import { getRoleList, addRole } from '@/api/role'
+import { getRoleList, addRole, updateRole, delRole } from '@/api/role'
 
 export default {
   name: 'Role',
@@ -108,15 +136,6 @@ export default {
       }
     }
   },
-  computed: {
-    isState() {
-      if (this.addForm.state === 1) {
-        return true
-      } else {
-        return false
-      }
-    }
-  },
   created() {
     this.getRoleList()
   },
@@ -126,6 +145,14 @@ export default {
       // console.log(res)
       this.tableData = res.rows
       this.pageParams.total = res.total
+      this.tableData.forEach(item => {
+        this.$set(item, 'isEdit', false)
+        this.$set(item, 'rowEdit', {
+          name: item.name,
+          description: item.description,
+          state: item.state
+        })
+      })
     },
     handlePageChange(page) {
       this.pageParams.page = page
@@ -136,13 +163,6 @@ export default {
     },
     addRole() {
       this.isAddShow = true
-    },
-    switchChange(val) {
-      if (val) {
-        this.addForm.state = 1
-      } else {
-        this.addForm.state = 0
-      }
     },
     btnOk() {
       this.$refs.addForm.validate(async(valid) => {
@@ -159,6 +179,40 @@ export default {
     close() {
       this.$refs.addForm.resetFields()
       this.isAddShow = false
+    },
+    btnEdit(row) {
+      // console.log('编辑', row)
+      row.isEdit = true
+      row.rowEdit.name = row.name
+      row.rowEdit.description = row.description
+      row.rowEdit.state = row.state
+    },
+    async btnEditOk(row) {
+      if (row.rowEdit.name && row.rowEdit.description) {
+        console.log(row)
+        await updateRole({
+          ...row.rowEdit,
+          id: row.id
+        })
+        Object.assign(row, {
+          name: row.rowEdit.name,
+          description: row.rowEdit.description,
+          state: row.rowEdit.state,
+          isEdit: false
+        })
+        this.$message.success('更新成功')
+      } else {
+        this.$message.error('角色名称或描述不能为空')
+      }
+    },
+    async del(id) {
+      // console.log('删除', id)
+      await delRole(id)
+      if (this.tableData.length === 1 && this.pageParams.page > 1) {
+        this.pageParams.page--
+      }
+      this.getRoleList()
+      this.$message.success('删除成功')
     }
   }
 }
@@ -195,13 +249,19 @@ export default {
   box-shadow: 0 6px 24px rgba(16, 24, 40, 0.06);
   padding: 8px 12px 16px;
 }
-.switch-row{
+
+.switch-row {
   margin-top: 10px;
 }
+
 .pagination {
   display: flex;
   justify-content: flex-end;
   padding: 12px 4px 0;
+}
+
+.btn-edit-gap {
+  margin-right: 8px;
 }
 
 ::v-deep .role-dialog .el-dialog__header {
