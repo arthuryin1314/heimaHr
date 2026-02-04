@@ -24,9 +24,9 @@
       </div>
       <div class="right">
         <el-row class="opeate-tools" type="flex" justify="end">
-          <el-button size="mini" type="primary">添加员工</el-button>
-          <el-button size="mini">excel导入</el-button>
-          <el-button size="mini">excel导出</el-button>
+          <el-button size="mini" type="primary" @click="$router.push('/employee/detail')">添加员工</el-button>
+          <el-button size="mini" @click="showExcelDialog = true">excel导入</el-button>
+          <el-button size="mini" @click="exportEmployeeData">excel导出</el-button>
         </el-row>
         <el-table :data="tableData" style="width: 100%" :default-sort="{ prop: 'timeOfEntry', order: 'descending' }">
           <el-table-column prop="staffPhoto" label="头像" width="100">
@@ -39,22 +39,34 @@
           <el-table-column prop="workNumber" label="工号" sortable />
           <el-table-column prop="formOfEmployment" label="聘用形式">
             <template slot-scope="{ row }">
-              <span>{{ row.formOfEmployment==1?'正式':'非正式' }}</span>
+              <span>{{ row.formOfEmployment == 1 ? '正式' : '非正式' }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="departmentName" label="部门" />
           <el-table-column prop="timeOfEntry" label="入职时间" sortable />
           <el-table-column label="操作">
-            <template>
-              <el-button type="text" size="small">
-                查看
-              </el-button>
-              <el-button type="text" size="small">
-                角色
-              </el-button>
-              <el-button type="text" size="small">
-                删除
-              </el-button>
+            <template slot-scope="scope">
+              <div class="table-actions">
+                <el-button type="text" size="small" @click="$router.push(`/employee/detail/${scope.row.id}`)">
+                  查看
+                </el-button>
+                <el-button type="text" size="small">
+                  角色
+                </el-button>
+                <el-popconfirm
+                  confirm-button-text="好的"
+                  cancel-button-text="不用了"
+                  icon="el-icon-info"
+                  icon-color="red"
+                  title="这是一段内容确定删除吗？"
+                  @onConfirm="btnDel(scope.row)"
+                >
+                  <el-button slot="reference" type="text" size="small">
+                    删除
+                  </el-button>
+                </el-popconfirm>
+              </div>
+
             </template>
           </el-table-column>
         </el-table>
@@ -67,16 +79,22 @@
         />
       </div>
     </div>
+    <importExcel :show-excel-dialog.sync="showExcelDialog" @uploadSuccess="getEmployeeList" />
   </div>
 </template>
 
 <script>
+import importExcel from './components/dialog.vue'
+import { saveAs } from 'file-saver'
 import { debounce } from 'lodash'
 import { getDepartmentList } from '@/api/department'
-import { getEmployeeList } from '@/api/employee'
+import { getEmployeeList, exportEmployeeData, delEmployee } from '@/api/employee'
 import { transListToTreeData } from '@/utils/index'
 export default {
   name: 'Employee',
+  components: {
+    importExcel
+  },
   data() {
     return {
       data: [],
@@ -92,7 +110,8 @@ export default {
         keyword: ''
       },
       tableData: [
-      ]
+      ],
+      showExcelDialog: false
     }
   },
   created() {
@@ -134,6 +153,17 @@ export default {
     search() {
       // console.log(this.params.keyword)
       this.debouncedSearch()
+    },
+    async exportEmployeeData() {
+      const res = await exportEmployeeData()
+      // console.log(res)
+      saveAs(res, '员工信息.xlsx')
+    },
+    async btnDel(row) {
+      // console.log(row)
+      await delEmployee(row.id)
+      if (this.data.length === 1 && this.queryParams.page > 1) this.params.page--
+      this.getEmployeeList()
     }
   }
 }
@@ -156,6 +186,14 @@ export default {
 
     .opeate-tools {
       margin: 10px;
+    }
+
+    .table-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 24px;
     }
 
     .pagination {
