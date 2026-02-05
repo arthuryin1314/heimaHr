@@ -50,7 +50,7 @@
                 <el-button type="text" size="small" @click="$router.push(`/employee/detail/${scope.row.id}`)">
                   查看
                 </el-button>
-                <el-button type="text" size="small">
+                <el-button type="text" size="small" @click="assignRoles(scope.row.id)">
                   角色
                 </el-button>
                 <el-popconfirm
@@ -66,10 +66,25 @@
                   </el-button>
                 </el-popconfirm>
               </div>
-
             </template>
           </el-table-column>
         </el-table>
+        <el-dialog :visible.sync="showRoleDialog" title="分配角色">
+          <!-- 弹层内容 -->
+          <!-- checkbox -->
+          <el-checkbox-group v-model="roleIds">
+            <!-- 放置n个的checkbox  要执行checkbox的存储值 item.id-->
+            <el-checkbox
+              v-for="item in roleList"
+              :key="item.id"
+              :label="item.id"
+            >{{ item.name }}</el-checkbox>
+          </el-checkbox-group>
+          <span slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="btnRoleOK">确 定</el-button>
+            <el-button @click="showRoleDialog = false">取 消</el-button>
+          </span>
+        </el-dialog>
         <el-pagination
           class="pagination"
           background
@@ -88,7 +103,7 @@ import importExcel from './components/dialog.vue'
 import { saveAs } from 'file-saver'
 import { debounce } from 'lodash'
 import { getDepartmentList } from '@/api/department'
-import { getEmployeeList, exportEmployeeData, delEmployee } from '@/api/employee'
+import { getEmployeeList, exportEmployeeData, delEmployee, assignRoles, getEmployeeDetail, assignRole } from '@/api/employee'
 import { transListToTreeData } from '@/utils/index'
 export default {
   name: 'Employee',
@@ -98,6 +113,10 @@ export default {
   data() {
     return {
       data: [],
+      roleList: [],
+      roleIds: [],
+      showRoleDialog: false,
+      currentUserId: null,
       defaultProps: {
         label: 'name',
         children: 'children'
@@ -164,6 +183,23 @@ export default {
       await delEmployee(row.id)
       if (this.data.length === 1 && this.queryParams.page > 1) this.params.page--
       this.getEmployeeList()
+    },
+    async assignRoles(id) {
+      console.log(id)
+      this.currentUserId = id
+      this.showRoleDialog = true
+      this.roleList = await assignRoles()
+      // console.log(this.roleList)
+      const detail = await getEmployeeDetail(id)
+      this.roleIds = detail.roleIds
+    },
+    async  btnRoleOK() {
+      await assignRole({
+        id: this.currentUserId,
+        roleIds: this.roleIds
+      })
+      this.$message.success('分配用户角色成功')
+      this.showRoleDialog = false
     }
   }
 }

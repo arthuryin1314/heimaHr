@@ -75,6 +75,7 @@
             <el-col :span="12">
               <el-form-item label="员工头像">
                 <!-- 放置上传图片 -->
+                <uploadImg v-model="formData.staffPhoto" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -93,10 +94,14 @@
 
 <script>
 import elTree from './components/tree.vue'
+import uploadImg from './components/uploadImg.vue'
 import { addEmployee, getEmployeeDetail, updateEmployee } from '@/api/employee'
 export default {
   name: 'EmployeeDetail',
-  components: { elTree },
+  components: {
+    elTree,
+    uploadImg
+  },
   data() {
     return {
       formData: {
@@ -158,7 +163,9 @@ export default {
       })
     },
     async getDetail() {
-      this.formData = await getEmployeeDetail(this.$route.params.id)
+      if (this.$route.params.id) {
+        this.formData = await getEmployeeDetail(this.$route.params.id)
+      }
     }
   }
 }

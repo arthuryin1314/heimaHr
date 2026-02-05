@@ -49,7 +49,7 @@
               <el-button type="danger" @click="scope.row.isEdit=false">取消</el-button>
             </template>
             <template v-else>
-              <el-button size="mini" type="primary">分配权限</el-button>
+              <el-button size="mini" type="primary" @click="btnPermission(scope.row.id)">分配权限</el-button>
               <el-button size="mini" type="info" class="btn-edit-gap" @click="btnEdit(scope.row)">编辑</el-button>
               <el-popconfirm
                 title="这是一段内容确定删除吗？"
@@ -95,12 +95,30 @@
           <el-button @click="close">取 消</el-button>
         </div>
       </el-dialog>
-    </div>
+      <el-dialog :visible.sync="showPermissionDialog" title="分配权限">
+        <!-- 放置权限数据 -->
+        <el-tree
+          ref="permTree"
+          node-key="id"
+          :data="permissionData"
+          :props="{ label: 'name' }"
+          show-checkbox
+          default-expand-all
+          :default-checked-keys="permIds"
+        />
+        <el-row slot="footer" type="flex" justify="center">
+          <el-col :span="6">
+            <el-button type="primary" size="mini" @click="btnPermissionOK">确定</el-button>
+            <el-button size="mini" @click="showPermissionDialog = false">取消</el-button>
+          </el-col>
+        </el-row>
+      </el-dialog></div>
   </div>
 </template>
 <script>
-import { getRoleList, addRole, updateRole, delRole } from '@/api/role'
-
+import { getRoleList, addRole, updateRole, delRole, getRoleDetail, assignPerm } from '@/api/role'
+import { transListToTreeData } from '@/utils'
+import { getPermissionList } from '@/api/permission'
 export default {
   name: 'Role',
   data() {
@@ -111,6 +129,10 @@ export default {
         total: 0,
         page: 1
       },
+      showPermissionDialog: false,
+      permissionData: [],
+      currentRoleId: null,
+      permIds: [],
       isAddShow: false,
       addForm: {
         name: '',
@@ -213,6 +235,21 @@ export default {
       }
       this.getRoleList()
       this.$message.success('删除成功')
+    },
+    async  btnPermission(id) {
+      this.currentRoleId = id
+      const { permIds } = await getRoleDetail(id)
+      this.permIds = permIds
+      this.permissionData = transListToTreeData(await getPermissionList(), 0)
+      this.showPermissionDialog = true
+    },
+    async  btnPermissionOK() {
+      await assignPerm({
+        id: this.currentRoleId,
+        permIds: this.$refs.permTree.getCheckedKeys()
+      })
+      this.$message.success('角色分配权限成功')
+      this.showPermissionDialog = false
     }
   }
 }
